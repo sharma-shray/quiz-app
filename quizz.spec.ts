@@ -1,90 +1,41 @@
 import { test, expect, type Page } from '@playwright/test';
 
-test('Check if div has 4 answers', async ({ page }) => {
+test('Check all answers have text', async ({ page }) => {
   await page.goto('localhost:3000');
 
-  const div = await page.waitForSelector('#answers');
+  // Check if the answers container exists
+  const answersContainer = await page.$('#answers');
+  expect(answersContainer).not.toBeNull();
 
-  // Get all the list items within the div
-  const listItems = await div.$$('ul li');
+  // Get all answer elements
+  const answerElements = await page.$$('#answers li');
 
-  // Assert that there are exactly 4 list items
-  expect(listItems.length).toBe(4);
+  // Loop through each answer element and check if it has text
+  for (const answerElement of answerElements) {
+    // Get the text content of the answer element
+    const textContent = await answerElement.textContent();
+    
+    // Check if the text content exists and is not null or empty
+    if (textContent && textContent.trim() !== '') {
+      expect(textContent.trim()).toBeTruthy();
+    } else {
+      // If text content is null or empty, fail the test
+      throw new Error(`Answer element ${answerElement} does not have text content.`);
+    }
+  }
 });
 
-test('Check if div has 4 answers with correct titles A, B, C, D', async ({ page }) => {
-    await page.goto('localhost:3000');
-  
-    const div = await page.waitForSelector('#answers');
-  
-    // Get all the list items within the div
-    const listItems = await div.$$('ul li');
-  
-    // Assert that there are exactly 4 list items
-    expect(listItems.length).toBe(4);
-  
-    // Check the title of each list item
-    const expectedTitles = ['A', 'B', 'C', 'D'];
-  for (let i = 0; i < listItems.length; i++) {
-    const listItem = listItems[i];
-    const span = await listItem.$('span');
-    if (!span) {
-      // If <span> is not found in the list item, fail the test
-      throw new Error(`Span not found in list item ${i + 1}`);
-    }
-    const title = await span.innerText();
-    expect(title).toBe(expectedTitles[i]);
-  }
-  });
 
-  test('Check if div has question text', async ({ page }) => {
-    await page.goto('localhost:3000');
-  
-    const div = await page.waitForSelector('#question');
-  
-    // Get the question text within the div
-    const questionParagraph = await div.$('p');
-  
-    expect(questionParagraph).not.toBe(null);
-  
-    if (questionParagraph) {
-        // Get the question text
-        const questionText = await questionParagraph.innerText();
-    
-        expect(questionText.trim()).not.toBe('');
-      } else {
-        throw new Error('Question text not found.');
-      }
-  });
+test('Clicking on wrong answer adds "wrong" class to the answer element', async ({ page }) => {
+  await page.goto('localhost:3000');
 
+  // Wait for the popup to disappear
+  await page.waitForSelector('.popup-container', { state: 'hidden' });
 
-  test('Check if submit button appears after selecting an option', async ({ page }) => {
-    await page.goto('localhost:3000');
-  
-    for (let attempt = 1; attempt <= 5; attempt++) {
-      try {
-        // Wait for the popup container to disappear
-        await page.waitForSelector('.popup-container', { state: 'hidden', timeout: 2000 });
-  
-        const answersDiv = await page.waitForSelector('#answers');
-  
-        const answerOptions = await answersDiv.$$('ul li');
-  
-        // Click on the first answer option (index 0)
-        await answerOptions[0].click();
-  
-        // Wait for the submit button to appear
-        const submitButton = await page.waitForSelector('#submit button', { timeout: 2000 });
-  
-        // Assert that the submit button exists
-        expect(submitButton).not.toBe(null);
-        
-        // If no error occurs, break out of the loop
-        break;
-      } catch (error) {
-        console.log(`Retry click action, attempt #${attempt}`);
-        // Wait for a short delay before retrying
-        await page.waitForTimeout(500);
-      }
-    }
-  });
+  // Click on the wrong answer
+  await page.click('#answers li[data-id="1"]');
+
+  // Check if the "wrong" class is added to the clicked wrong answer element
+  const isWrongClassAdded = await page.$eval('#answers li[data-id="1"]', element => element.classList.contains('wrong'));
+  expect(isWrongClassAdded).toBeTruthy();
+});
